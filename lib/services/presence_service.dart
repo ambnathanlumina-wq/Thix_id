@@ -46,7 +46,6 @@ class PresenceService {
     try {
       await _client.rpc('pgrst_schema_reload');
     } catch (e) {
-      // Some deployments expose it as an Edge Function instead.
       try {
         await _client.functions.invoke('pgrst_schema_reload', body: const {});
       } catch (_) {}
@@ -74,8 +73,6 @@ class PresenceService {
     }
   }
 
-  /// Starts a lightweight heartbeat to keep `last_seen_at` fresh while the user
-  /// is actively using the app.
   void startHeartbeat({Duration interval = const Duration(seconds: 30)}) {
     _heartbeat?.cancel();
     _heartbeat = Timer.periodic(interval, (_) => unawaited(setOnline(true)));
@@ -86,39 +83,42 @@ class PresenceService {
     _heartbeat = null;
   }
 
+  /// Stream de présence par polling (sans Realtime)
   Stream<ThixPresence?> streamPresence(String userId) {
     final controller = StreamController<ThixPresence?>.broadcast();
-    final channel = _client.channel('presence:$userId');
-    final filter = PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: userId);
+    Timer? pollTimer;
+    bool isActive = true;
 
     Future<void> emitLatest() async {
+      if (!isActive) return;
       try {
         final row = await _client.from(table).select('*').eq('user_id', userId).maybeSingle();
         if (row == null) {
-          controller.add(null);
+          if (!controller.isClosed) controller.add(null);
           return;
         }
-        controller.add(ThixPresence.fromRow((row as Map).cast<String, dynamic>()));
+        if (!controller.isClosed) controller.add(ThixPresence.fromRow((row as Map).cast<String, dynamic>()));
       } catch (e) {
         if (_isTableMissing(e)) {
           debugPrint('PresenceService: table missing/cache stale. Disabling presence stream until DB is ready. err=$e');
-          controller.add(null);
+          if (!controller.isClosed) controller.add(null);
           return;
         }
         debugPrint('PresenceService: emitLatest failed userId=$userId err=$e');
-        controller.add(null);
+        if (!controller.isClosed) controller.add(null);
       }
     }
 
-    controller.onListen = () => unawaited(emitLatest());
-    channel
-        .onPostgresChanges(event: PostgresChangeEvent.all, schema: 'public', table: table, filter: filter, callback: (_) => emitLatest())
-        .subscribe((status, err) {
-      if (err != null) debugPrint('PresenceService: realtime subscribe status=$status error=$err');
-    });
+    controller.onListen = () {
+      isActive = true;
+      unawaited(emitLatest());
+      pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => unawaited(emitLatest()));
+    };
 
-    controller.onCancel = () async {
-      await _client.removeChannel(channel);
+    controller.onCancel = () {
+      isActive = false;
+      pollTimer?.cancel();
+      controller.close();
     };
 
     return controller.stream;
