@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:thix_id/auth/auth_controller.dart';
+import 'package:thix_id/models/event_item.dart';
 
 // Pages
 import 'presentation/home/home_page.dart';
@@ -159,8 +160,11 @@ class AppRouter {
           path: '/events/:eventId/register',
           pageBuilder: (context, state) {
             final eventId = state.pathParameters['eventId'] ?? '';
-            // Note: Tu peux passer l'event complet via extra si besoin
-            return NoTransitionPage(child: EventRegisterPage(event: EventItem.placeholder(id: eventId))); // À adapter si nécessaire
+            return NoTransitionPage(
+              child: EventRegisterPage(
+                event: EventItem.placeholder(id: eventId),
+              ),
+            );
           },
         ),
         GoRoute(
