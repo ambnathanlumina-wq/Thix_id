@@ -13,10 +13,11 @@ class NotificationService {
   /// `{id,user_id,type,title,body,read,data,created_at}` regardless of DB column variants.
   static const String _table = 'notifications';
 
+  /// Détermine si le statut/erreur Realtime est permanent et non récupérable
   static bool _isPermanentRealtimeError(RealtimeSubscribeStatus status, Object? err) {
     if (status == RealtimeSubscribeStatus.channelError) return true;
     final msg = (err ?? '').toString().toLowerCase();
-    // Common permanent-ish causes: table missing, publication missing, RLS denied.
+    // Causes permanentes communes: table manquante, publication manquante, RLS refusée.
     if (msg.contains('permission denied')) return true;
     if (msg.contains('rls')) return true;
     if (msg.contains('relation') && msg.contains('does not exist')) return true;
@@ -24,6 +25,7 @@ class NotificationService {
     return false;
   }
 
+  /// Normalise les lignes reçues de Supabase pour assurer un format cohérent
   Map<String, dynamic> _normalizeRow(Map<String, dynamic> r) {
     final data = (r['data'] is Map)
         ? (r['data'] as Map).cast<String, dynamic>()
@@ -43,12 +45,12 @@ class NotificationService {
     };
   }
 
-  /// Realtime stream (preferred): uses `postgres_changes` then refetches.
-  /// Falls back to polling if Realtime cannot subscribe.
+  /// Stream Realtime (préféré): utilise `postgres_changes` puis recharge.
+  /// Retourne au polling si Realtime ne peut pas s'abonner.
   Stream<List<Map<String, dynamic>>> streamForUser(String uid) {
-    // IMPORTANT: This must emit AFTER the first listener is attached.
-    // A broadcast StreamController will drop events added before any listener
-    // subscribes (which makes the UI look "stuck loading").
+    // IMPORTANT: Ceci DOIT émettre APRÈS que le premier listener soit attaché.
+    // Un StreamController broadcast abandonnera les événements ajoutés avant que
+    // tout listener ne soit abonné (ce qui rend l'UI "stuck loading").
     late final StreamController<List<Map<String, dynamic>>> controller;
     final authUid = _client.auth.currentUser?.id;
     if (authUid != null && authUid != uid) {
@@ -63,11 +65,19 @@ class NotificationService {
     Timer? pollTimer;
     var polling = false;
 
+    /// Émet la dernière liste de notifications depuis la base de données
     Future<void> emitLatest() async {
       try {
-        final rows = await _client.from(_table).select('*').eq('user_id', uid).order('created_at', ascending: false).limit(50);
+        final rows = await _client
+            .from(_table)
+            .select('*')
+            .eq('user_id', uid)
+            .order('created_at', ascending: false)
+            .limit(50);
         final list = (rows is List)
-            ? rows.map((e) => _normalizeRow((e as Map).cast<String, dynamic>())).toList(growable: false)
+            ? rows
+                .map((e) => _normalizeRow((e as Map).cast<String, dynamic>()))
+                .toList(growable: false)
             : const <Map<String, dynamic>>[];
         debugPrint('NotificationService: emitLatest ok uid=$uid count=${list.length}');
         controller.add(list);
@@ -77,6 +87,7 @@ class NotificationService {
       }
     }
 
+    /// Bascule vers le polling en cas d'échec Realtime
     void startPolling() {
       if (polling) return;
       polling = true;
@@ -87,17 +98,18 @@ class NotificationService {
 
     controller = StreamController<List<Map<String, dynamic>>>.broadcast(
       onListen: () {
-        // First paint: fetch current state.
+        // Premier rendu: récupère l'état actuel.
         unawaited(emitLatest());
       },
     );
 
+    /// S'abonne aux changements Realtime ou réessaye après un délai
     Future<void> subscribeOrRetry() async {
       if (isCancelled) return;
       retryTimer?.cancel();
       if (polling) return;
 
-      // Recreate a fresh channel on every attempt.
+      // Crée un nouveau canal à chaque tentative.
       try {
         if (channel != null) await _client.removeChannel(channel!);
       } catch (_) {}
@@ -120,13 +132,13 @@ class NotificationService {
             )
             .subscribe((status, err) {
               debugPrint('NotificationService: subscribe status=$status err=$err uid=$uid');
-              // We observe occasional `closed` statuses before the channel stabilizes.
-              // If RLS rejects or connection is unstable, retry with backoff.
+              // Nous observons occasionnellement des statuts `closed` avant que le canal ne se stabilise.
+              // Si RLS rejette ou que la connexion est instable, réessayer avec backoff.
               if (isCancelled) return;
 
               if (_isPermanentRealtimeError(status, err)) {
-                // Do not loop forever: treat this as a configuration/schema problem and
-                // fall back to polling so the UI stays usable.
+                // Ne pas boucler indéfiniment: traitez ceci comme un problème de configuration/schéma et
+                // basculez vers le polling pour que l'UI reste utilisable.
                 startPolling();
                 return;
               }
@@ -163,15 +175,16 @@ class NotificationService {
     return controller.stream;
   }
 
-  /// Convenience stream that exposes the number of unread notifications.
+  /// Stream de commodité qui expose le nombre de notifications non lues.
   ///
-  /// This is used for red badges (Home buttons, bell icon, etc.).
+  /// Utilisé pour les badges rouges (boutons Accueil, icône cloche, etc.).
   Stream<int> streamUnreadCount(String uid) {
     return streamForUser(uid)
         .map((rows) => rows.where((r) => (r['read'] as bool?) != true).length)
         .distinct();
   }
 
+  /// Ajoute une nouvelle notification pour un utilisateur
   Future<void> add({
     required String toUid,
     required String type,
@@ -180,7 +193,7 @@ class NotificationService {
     Map<String, dynamic>? data,
   }) async {
     try {
-      // Try the richer schema first.
+      // Essayer le schéma plus riche d'abord.
       try {
         await _client.from(_table).insert({
           'user_id': toUid,
@@ -195,7 +208,7 @@ class NotificationService {
       } catch (e) {
         debugPrint('NotificationService: insert with (type,body,read,data) failed, retrying legacy columns. err=$e');
       }
-      // Legacy/simple schema compatibility.
+      // Compatibilité schéma hérité/simple.
       await _client.from(_table).insert({
         'user_id': toUid,
         'title': title,
@@ -209,20 +222,30 @@ class NotificationService {
     }
   }
 
+  /// Marque une notification comme lue
   Future<void> markRead({required String uid, required String notificationId}) async {
     try {
       try {
-        await _client.from(_table).update({'read': true}).eq('id', notificationId).eq('user_id', uid);
+        await _client
+            .from(_table)
+            .update({'read': true})
+            .eq('id', notificationId)
+            .eq('user_id', uid);
         return;
       } catch (e) {
         debugPrint('NotificationService: markRead set read=true failed, retry legacy. err=$e');
       }
-      await _client.from(_table).update({'seen': true}).eq('id', notificationId).eq('user_id', uid);
+      await _client
+          .from(_table)
+          .update({'seen': true})
+          .eq('id', notificationId)
+          .eq('user_id', uid);
     } catch (e) {
       debugPrint('NotificationService: markRead failed uid=$uid id=$notificationId err=$e');
     }
   }
 
+  /// Marque toutes les notifications comme lues
   Future<void> markAllRead(String uid) async {
     try {
       try {

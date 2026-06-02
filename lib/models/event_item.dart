@@ -1,193 +1,67 @@
-import 'package:flutter/foundation.dart';
-
-@immutable
+/// Modèle pour représenter un élément d'événement
 class EventItem {
   final String id;
-
   final String title;
   final String description;
-  final String category;
-  final String location;
-
-  final DateTime startsAt;
-  final DateTime? endsAt;
-
-  final double price;
-
-  final bool isRecommended;
-  final bool isPublished;
-
+  final String? category;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? location;
+  final int? maxParticipants;
+  final int? currentParticipants;
+  final bool? isActive;
+  final String? imageUrl;
   final String? imageAssetPath;
+  final double? price;
+  final DateTime? startsAt;
+  final String? priceLabel;
 
-  final String? coverImageBucket;
-  final String? coverImagePath;
-
-  final String? organizerId;
-  final String? organizerName;
-
-  final int maxParticipants;
-  final int registeredParticipants;
-
-  final DateTime createdAt;
-  final DateTime? updatedAt;
-
-  const EventItem({
+  EventItem({
     required this.id,
     required this.title,
     required this.description,
-    required this.category,
-    required this.location,
-    required this.startsAt,
-    required this.price,
-    required this.isRecommended,
-    required this.isPublished,
-    required this.maxParticipants,
-    required this.registeredParticipants,
-    required this.createdAt,
-    this.endsAt,
+    this.category,
+    this.startDate,
+    this.endDate,
+    this.location,
+    this.maxParticipants,
+    this.currentParticipants,
+    this.isActive,
+    this.imageUrl,
     this.imageAssetPath,
-    this.coverImageBucket,
-    this.coverImagePath,
-    this.organizerId,
-    this.organizerName,
-    this.updatedAt,
+    this.price,
+    this.startsAt,
+    this.priceLabel,
   });
 
-  // ===========================================================================
-  // HELPERS
-  // ===========================================================================
-
-  bool get isFree => price <= 0;
-
-  bool get isPaid => price > 0;
-
-  bool get isSoldOut =>
-      maxParticipants > 0 &&
-      registeredParticipants >= maxParticipants;
-
-  bool get isUpcoming =>
-      startsAt.isAfter(DateTime.now());
-
-  bool get hasStarted =>
-      startsAt.isBefore(DateTime.now());
-
-  int get remainingSeats {
-    if (maxParticipants <= 0) {
-      return 0;
-    }
-
-    return maxParticipants -
-        registeredParticipants;
-  }
-
-  String get priceLabel {
-    if (price <= 0) {
-      return 'Gratuit';
-    }
-
-    return '${price.toStringAsFixed(0)} \$';
-  }
-
-  // ===========================================================================
-  // JSON
-  // ===========================================================================
-
-  factory EventItem.fromJson(
-    Map<String, dynamic> json,
-  ) {
+  /// Crée un EventItem à partir d'un JSON
+  factory EventItem.fromJson(Map<String, dynamic> json) {
     return EventItem(
-      id: json['id']?.toString() ?? '',
-
-      title:
-          json['title']?.toString() ??
-          'Sans titre',
-
-      description:
-          json['description']
-                  ?.toString() ??
-              '',
-
-      category:
-          json['category']
-                  ?.toString() ??
-              'Autre',
-
-      location:
-          json['location']
-                  ?.toString() ??
-              '',
-
-      startsAt: DateTime.parse(
-        json['event_date']
-                ?.toString() ??
-            DateTime.now()
-                .toIso8601String(),
-      ),
-
-      endsAt:
-          json['end_date'] != null
-              ? DateTime.tryParse(
-                  json['end_date']
-                      .toString(),
-                )
-              : null,
-
-      price: (json['price'] ?? 0)
-          .toDouble(),
-
-      isRecommended:
-          json['is_recommended'] ==
-              true,
-
-      isPublished:
-          json['is_published'] !=
-              false,
-
-      imageAssetPath:
-          json['image_asset_path']
-              ?.toString(),
-
-      coverImageBucket:
-          json['cover_image_bucket']
-              ?.toString(),
-
-      coverImagePath:
-          json['cover_image_path']
-              ?.toString(),
-
-      organizerId:
-          json['organizer_id']
-              ?.toString(),
-
-      organizerName:
-          json['organizer_name']
-              ?.toString(),
-
-      maxParticipants:
-          json['max_participants'] ??
-              0,
-
-      registeredParticipants:
-          json['registered_participants'] ??
-              0,
-
-      createdAt: DateTime.parse(
-        json['created_at']
-                ?.toString() ??
-            DateTime.now()
-                .toIso8601String(),
-      ),
-
-      updatedAt:
-          json['updated_at'] != null
-              ? DateTime.tryParse(
-                  json['updated_at']
-                      .toString(),
-                )
-              : null,
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? 'Sans titre',
+      description: json['description'] as String? ?? '',
+      category: json['category'] as String?,
+      location: json['location'] as String? ?? '',
+      maxParticipants: json['max_participants'] as int?,
+      currentParticipants: json['current_participants'] as int?,
+      isActive: json['is_active'] as bool? ?? true,
+      imageUrl: json['image_url'] as String?,
+      imageAssetPath: json['image_asset_path'] as String?,
+      price: (json['price'] as num?)?.toDouble(),
+      priceLabel: json['price_label'] as String? ?? 'Gratuit',
+      startsAt: json['starts_at'] != null
+          ? DateTime.tryParse(json['starts_at'].toString())
+          : DateTime.now(),
+      startDate: json['start_date'] != null
+          ? DateTime.tryParse(json['start_date'].toString())
+          : null,
+      endDate: json['end_date'] != null
+          ? DateTime.tryParse(json['end_date'].toString())
+          : null,
     );
   }
 
+  /// Convertit EventItem en JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -195,106 +69,80 @@ class EventItem {
       'description': description,
       'category': category,
       'location': location,
-      'event_date':
-          startsAt.toIso8601String(),
-      'end_date':
-          endsAt?.toIso8601String(),
+      'max_participants': maxParticipants,
+      'current_participants': currentParticipants,
+      'is_active': isActive,
+      'image_url': imageUrl,
+      'image_asset_path': imageAssetPath,
       'price': price,
-      'is_recommended':
-          isRecommended,
-      'is_published':
-          isPublished,
-      'image_asset_path':
-          imageAssetPath,
-      'cover_image_bucket':
-          coverImageBucket,
-      'cover_image_path':
-          coverImagePath,
-      'organizer_id':
-          organizerId,
-      'organizer_name':
-          organizerName,
-      'max_participants':
-          maxParticipants,
-      'registered_participants':
-          registeredParticipants,
-      'created_at':
-          createdAt.toIso8601String(),
-      'updated_at':
-          updatedAt?.toIso8601String(),
+      'price_label': priceLabel,
+      'starts_at': startsAt?.toIso8601String(),
+      'start_date': startDate?.toIso8601String(),
+      'end_date': endDate?.toIso8601String(),
     };
   }
 
-  // ===========================================================================
-  // COPY WITH
-  // ===========================================================================
+  /// Crée un EventItem placeholder pour les cas de chargement
+  static EventItem placeholder({required String id}) {
+    return EventItem(
+      id: id,
+      title: 'Événement $id',
+      description: 'Chargement en cours...',
+      category: 'Général',
+      isActive: true,
+      priceLabel: 'En attente',
+      startsAt: DateTime.now(),
+      location: 'À déterminer',
+    );
+  }
 
+  /// Crée une copie avec modifications possibles
   EventItem copyWith({
     String? id,
     String? title,
     String? description,
     String? category,
+    DateTime? startDate,
+    DateTime? endDate,
     String? location,
-    DateTime? startsAt,
-    DateTime? endsAt,
-    double? price,
-    bool? isRecommended,
-    bool? isPublished,
-    String? imageAssetPath,
-    String? coverImageBucket,
-    String? coverImagePath,
-    String? organizerId,
-    String? organizerName,
     int? maxParticipants,
-    int? registeredParticipants,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    int? currentParticipants,
+    bool? isActive,
+    String? imageUrl,
+    String? imageAssetPath,
+    double? price,
+    DateTime? startsAt,
+    String? priceLabel,
   }) {
     return EventItem(
       id: id ?? this.id,
       title: title ?? this.title,
-      description:
-          description ??
-              this.description,
-      category:
-          category ?? this.category,
-      location:
-          location ?? this.location,
-      startsAt:
-          startsAt ?? this.startsAt,
-      endsAt: endsAt ?? this.endsAt,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      location: location ?? this.location,
+      maxParticipants: maxParticipants ?? this.maxParticipants,
+      currentParticipants: currentParticipants ?? this.currentParticipants,
+      isActive: isActive ?? this.isActive,
+      imageUrl: imageUrl ?? this.imageUrl,
+      imageAssetPath: imageAssetPath ?? this.imageAssetPath,
       price: price ?? this.price,
-      isRecommended:
-          isRecommended ??
-              this.isRecommended,
-      isPublished:
-          isPublished ??
-              this.isPublished,
-      imageAssetPath:
-          imageAssetPath ??
-              this.imageAssetPath,
-      coverImageBucket:
-          coverImageBucket ??
-              this.coverImageBucket,
-      coverImagePath:
-          coverImagePath ??
-              this.coverImagePath,
-      organizerId:
-          organizerId ??
-              this.organizerId,
-      organizerName:
-          organizerName ??
-              this.organizerName,
-      maxParticipants:
-          maxParticipants ??
-              this.maxParticipants,
-      registeredParticipants:
-          registeredParticipants ??
-              this.registeredParticipants,
-      createdAt:
-          createdAt ?? this.createdAt,
-      updatedAt:
-          updatedAt ?? this.updatedAt,
+      startsAt: startsAt ?? this.startsAt,
+      priceLabel: priceLabel ?? this.priceLabel,
     );
   }
+
+  @override
+  String toString() => 'EventItem(id: $id, title: $title, location: $location)';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EventItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
