@@ -20,7 +20,7 @@ dependencies:
   fl_chart: ^0.68.0
 
   # Backend
-  supabase_flutter: ^1.10.25
+  supabase_flutter: ^1.12.0
   firebase_core: ^2.24.2
   firebase_auth: ^4.15.3
   cloud_firestore: ^4.13.6
