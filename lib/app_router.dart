@@ -96,10 +96,11 @@ class AppRoutes {
 }
 
 class AppRouter {
-  static GoRouter create(AuthController auth) {
+  static GoRouter create(AuthController auth, {Listenable? extraRefreshListenable}) {
+    final refreshListenable = extraRefreshListenable ?? auth;
     return GoRouter(
       initialLocation: AppRoutes.home,
-      refreshListenable: auth,
+      refreshListenable: refreshListenable,
       redirect: (context, state) {
         final isLoggedIn = auth.isAuthenticated;
         final location = state.matchedLocation;
