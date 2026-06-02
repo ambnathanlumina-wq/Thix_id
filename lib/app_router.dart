@@ -59,9 +59,6 @@ class AppRoutes {
   static const String login = '/login';
   static const String personalReg = '/personal-reg';
   static const String enterpriseReg = '/enterprise-reg';
-  static const String paymentGateway = '/payment-gateway';
-  static const String activationReceipt = '/activation-receipt';
-  static const String publicProfile = '/profile/:userId';
   static const String userDashboard = '/user-dashboard';
   static const String enterpriseDashboard = '/enterprise-dashboard';
   static const String chat = '/chat';
@@ -69,38 +66,18 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String network = '/network';
   static const String jobs = '/jobs';
-  static const String jobDetails = '/jobs/:jobId';
-  static const String jobApply = '/jobs/:jobId/apply';
-  static const String jobDashboard = '/job-dashboard';
-  static const String recruiterPortal = '/recruiter-portal';
   static const String opportunities = '/opportunities';
-  static const String opportunityDetails = '/opportunities/:opportunityId';
-  static const String opportunityApply = '/opportunities/:opportunityId/apply';
   static const String events = '/events';
-  static const String eventDetails = '/events/:eventId';
-  static const String eventRegister = '/events/:eventId/register';
-  static const String eventTicket = '/events/:eventId/ticket/:registrationId';
-  static const String userEventDashboard = '/events/me';
   static const String education = '/education';
   static const String trainingHome = '/training';
-  static const String trainingDetails = '/training/:trainingId';
-  static const String learningDashboard = '/learning-dashboard';
-  static const String lessonPlayer = '/lesson/:lessonId';
   static const String admin = '/admin';
-  static const String adminMedia = '/admin/media';
-  static const String thixMarket = '/thix-market';
-  static const String thixSante = '/thix-sante';
-  static const String thixReservation = '/thix-reservation';
-  static const String thixMoney = '/thix-money';
-  static const String thixMedia = '/thix-media';
 }
 
 class AppRouter {
-  static GoRouter create(AuthController auth, {Listenable? extraRefreshListenable}) {
-    final refreshListenable = extraRefreshListenable ?? auth;
+  static GoRouter create(AuthController auth) {
     return GoRouter(
       initialLocation: AppRoutes.home,
-      refreshListenable: refreshListenable,
+      refreshListenable: auth,
       redirect: (context, state) {
         final isLoggedIn = auth.isAuthenticated;
         final location = state.matchedLocation;
@@ -118,10 +95,9 @@ class AppRouter {
         return null;
       },
       routes: [
-        // ==================== AUTH ROUTES ====================
         GoRoute(
           path: AppRoutes.home,
-          pageBuilder: (context, state) => const NoTransitionPage(child: HomePage()),
+          pageBuilder: (context, state) => const NoTransitionPage(child: HomePagePremium()),
         ),
         GoRoute(
           path: AppRoutes.login,
@@ -135,18 +111,6 @@ class AppRouter {
           path: AppRoutes.enterpriseReg,
           pageBuilder: (context, state) => const NoTransitionPage(child: EnterpriseRegistrationPage()),
         ),
-
-        // ==================== PAYMENT ROUTES ====================
-        GoRoute(
-          path: AppRoutes.paymentGateway,
-          pageBuilder: (context, state) => const NoTransitionPage(child: PaymentGatewayPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.activationReceipt,
-          pageBuilder: (context, state) => const NoTransitionPage(child: ActivationReceiptPage()),
-        ),
-
-        // ==================== DASHBOARD ROUTES ====================
         GoRoute(
           path: AppRoutes.userDashboard,
           pageBuilder: (context, state) => const NoTransitionPage(child: UserDashboardPage()),
@@ -155,17 +119,6 @@ class AppRouter {
           path: AppRoutes.enterpriseDashboard,
           pageBuilder: (context, state) => const NoTransitionPage(child: EnterpriseDashboardPage()),
         ),
-
-        // ==================== PROFILE ROUTES ====================
-        GoRoute(
-          path: AppRoutes.publicProfile,
-          pageBuilder: (context, state) {
-            final userId = state.pathParameters['userId'] ?? '';
-            return NoTransitionPage(child: PublicProfilePage(userId: userId));
-          },
-        ),
-
-        // ==================== CORE FEATURE ROUTES ====================
         GoRoute(
           path: AppRoutes.chat,
           pageBuilder: (context, state) => const NoTransitionPage(child: ThixChatPage()),
@@ -182,69 +135,29 @@ class AppRouter {
           path: AppRoutes.network,
           pageBuilder: (context, state) => const NoTransitionPage(child: NetworkPage()),
         ),
-
-        // ==================== JOBS ROUTES ====================
         GoRoute(
           path: AppRoutes.jobs,
           pageBuilder: (context, state) => const NoTransitionPage(child: JobsPage()),
         ),
         GoRoute(
-          path: AppRoutes.jobDetails,
-          pageBuilder: (context, state) {
-            final jobId = state.pathParameters['jobId'] ?? '';
-            return NoTransitionPage(child: JobDetailsPage(jobId: jobId));
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.jobApply,
-          pageBuilder: (context, state) {
-            final jobId = state.pathParameters['jobId'] ?? '';
-            return NoTransitionPage(child: JobApplyPage(jobId: jobId));
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.jobDashboard,
-          pageBuilder: (context, state) => const NoTransitionPage(child: JobDashboardPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.recruiterPortal,
-          pageBuilder: (context, state) => const NoTransitionPage(child: RecruiterPortalPage()),
-        ),
-
-        // ==================== OPPORTUNITIES ROUTES ====================
-        GoRoute(
           path: AppRoutes.opportunities,
           pageBuilder: (context, state) => const NoTransitionPage(child: OpportunitiesPage()),
         ),
         GoRoute(
-          path: AppRoutes.opportunityDetails,
-          pageBuilder: (context, state) {
-            final opportunityId = state.pathParameters['opportunityId'] ?? '';
-            return NoTransitionPage(child: OpportunityDetailsPage(opportunityId: opportunityId));
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.opportunityApply,
-          pageBuilder: (context, state) {
-            final opportunityId = state.pathParameters['opportunityId'] ?? '';
-            return NoTransitionPage(child: OpportunityApplyPage(opportunityId: opportunityId));
-          },
+          path: AppRoutes.events,
+          pageBuilder: (context, state) => const NoTransitionPage(child: EventsPage()),
         ),
 
         // ==================== EVENTS ROUTES ====================
         GoRoute(
-          path: AppRoutes.events,
-          pageBuilder: (context, state) => const NoTransitionPage(child: EventsPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.eventDetails,
+          path: '/events/:eventId',
           pageBuilder: (context, state) {
             final eventId = state.pathParameters['eventId'] ?? '';
             return NoTransitionPage(child: EventDetailsPage(eventId: eventId));
           },
         ),
         GoRoute(
-          path: AppRoutes.eventRegister,
+          path: '/events/:eventId/register',
           pageBuilder: (context, state) {
             final eventId = state.pathParameters['eventId'] ?? '';
             return NoTransitionPage(
@@ -255,7 +168,7 @@ class AppRouter {
           },
         ),
         GoRoute(
-          path: AppRoutes.eventTicket,
+          path: '/events/:eventId/ticket/:registrationId',
           pageBuilder: (context, state) {
             final eventId = state.pathParameters['eventId'] ?? '';
             final registrationId = state.pathParameters['registrationId'] ?? '';
@@ -265,11 +178,11 @@ class AppRouter {
           },
         ),
         GoRoute(
-          path: AppRoutes.userEventDashboard,
+          path: '/events/me',
           pageBuilder: (context, state) => const NoTransitionPage(child: UserEventDashboardPage()),
         ),
 
-        // ==================== EDUCATION & TRAINING ROUTES ====================
+        // Autres routes
         GoRoute(
           path: AppRoutes.education,
           pageBuilder: (context, state) => const NoTransitionPage(child: EducationPage()),
@@ -279,54 +192,8 @@ class AppRouter {
           pageBuilder: (context, state) => const NoTransitionPage(child: TrainingHomePage()),
         ),
         GoRoute(
-          path: AppRoutes.trainingDetails,
-          pageBuilder: (context, state) {
-            final trainingId = state.pathParameters['trainingId'] ?? '';
-            return NoTransitionPage(child: TrainingDetailsPage(trainingId: trainingId));
-          },
-        ),
-        GoRoute(
-          path: AppRoutes.learningDashboard,
-          pageBuilder: (context, state) => const NoTransitionPage(child: LearningDashboardPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.lessonPlayer,
-          pageBuilder: (context, state) {
-            final lessonId = state.pathParameters['lessonId'] ?? '';
-            return NoTransitionPage(child: LessonPlayerPage(lessonId: lessonId));
-          },
-        ),
-
-        // ==================== ADMIN ROUTES ====================
-        GoRoute(
           path: AppRoutes.admin,
           pageBuilder: (context, state) => const NoTransitionPage(child: AdminPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.adminMedia,
-          pageBuilder: (context, state) => const NoTransitionPage(child: AdminMediaPage()),
-        ),
-
-        // ==================== THIX SERVICES ROUTES ====================
-        GoRoute(
-          path: AppRoutes.thixMarket,
-          pageBuilder: (context, state) => const NoTransitionPage(child: ThixMarketPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.thixSante,
-          pageBuilder: (context, state) => const NoTransitionPage(child: ThixSantePage()),
-        ),
-        GoRoute(
-          path: AppRoutes.thixReservation,
-          pageBuilder: (context, state) => const NoTransitionPage(child: ThixReservationPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.thixMoney,
-          pageBuilder: (context, state) => const NoTransitionPage(child: ThixMoneyPage()),
-        ),
-        GoRoute(
-          path: AppRoutes.thixMedia,
-          pageBuilder: (context, state) => const NoTransitionPage(child: ThixMediaPage()),
         ),
       ],
     );
