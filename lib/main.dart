@@ -8,7 +8,7 @@ import 'package:thix_id/auth/supabase_auth_manager.dart';
 import 'package:thix_id/firebase_options.dart';
 import 'package:thix_id/l10n/app_localizations.dart';
 import 'package:thix_id/l10n/locale_controller.dart';
-import 'package:thix_id/nav.dart';
+import 'package:thix_id/app_router.dart';
 import 'package:thix_id/supabase/supabase_config.dart';
 import 'package:thix_id/theme.dart';
 
