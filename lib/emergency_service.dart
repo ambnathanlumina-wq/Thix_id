@@ -421,7 +421,14 @@ class EmergencyService {
       final uri = (file as dynamic).uri;
       final fileName = (uri != null && (uri as Uri).pathSegments.isNotEmpty) ? (uri as Uri).pathSegments.last : null;
       if (!_evidenceTableDisabled) {
-        await _client.from('thix_emergency_evidence').insert({'alert_id': alertId, 'kind': 'audio', 'storage_path': storagePath, 'mime_type': 'audio/mp4', 'file_name': fileName, 'file_size_bytes': len});
+        await _client.from('thix_emergency_evidence').insert({
+          'alert_id': alertId,
+          'kind': 'audio',
+          'storage_path': storagePath,
+          'mime_type': 'audio/mp4',
+          'file_name': fileName,
+          'file_size_bytes': len,
+        });
       }
       await _insertAudit(action: 'upload_recording', entityType: 'thix_emergency_alerts', entityId: alertId, metadata: {'path': storagePath});
       return storagePath;
